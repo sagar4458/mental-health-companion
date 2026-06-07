@@ -1,0 +1,1148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Solace — I'm always here</title>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;1,300;1,400&family=DM+Sans:wght@200;300;400&display=swap" rel="stylesheet"/>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg        : #0a0b12;
+      --surface   : rgba(255,255,255,0.04);
+      --border    : rgba(255,255,255,0.07);
+      --text      : #ddd9f0;
+      --muted     : #5a5c70;
+      --mp        : #8b7cf8;
+      --mg        : rgba(139,124,248,0.2);
+      --bs        : 4s;
+    }
+
+    body.e-joy       { --mp:#f0b429; --mg:rgba(240,180,41,0.28);  --bg-a:#1a1400; --bg-b:#2a1e04; }
+    body.e-trust     { --mp:#4a9e6e; --mg:rgba(74,158,110,0.22);  --bg-a:#061410; --bg-b:#0c2018; }
+    body.e-fear      { --mp:#6b8fd4; --mg:rgba(107,143,212,0.25); --bg-a:#060e20; --bg-b:#0a1630; --bs:2.2s; }
+    body.e-surprise  { --mp:#e0a020; --mg:rgba(224,160,32,0.25);  --bg-a:#1a1400; --bg-b:#241a04; }
+    body.e-sadness   { --mp:#5a7ab5; --mg:rgba(90,122,181,0.22);  --bg-a:#060818; --bg-b:#080c24; --bs:6s; }
+    body.e-disgust   { --mp:#7a6e40; --mg:rgba(122,110,64,0.2);   --bg-a:#101008; --bg-b:#181608; }
+    body.e-anger     { --mp:#c4614a; --mg:rgba(196,97,74,0.28);   --bg-a:#200808; --bg-b:#300c08; --bs:2.8s; }
+    body.e-anticipation{ --mp:#c47a30; --mg:rgba(196,122,48,0.25);--bg-a:#1a1200; --bg-b:#221800; }
+    body.e-neutral   { --mp:#8b7cf8; --mg:rgba(139,124,248,0.18); --bg-a:#0a0b12; --bg-b:#0e1020; }
+    body.e-crisis    { --mp:#c94040; --mg:rgba(201,64,64,0.32);   --bg-a:#200404; --bg-b:#300606; --bs:1.6s; }
+
+    body {
+      background: rgb(10,11,18); /* JS will override this smoothly via inline style */
+      color: var(--text);
+      font-family: "DM Sans", sans-serif;
+      font-weight: 300;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      transition: none; /* background smoothed via JS */
+    }
+
+    /* ── Canvas ── */
+    #canvas { position:fixed; inset:0; pointer-events:none; z-index:0; }
+    .vignette {
+      position:fixed; inset:0; pointer-events:none; z-index:1;
+      background: radial-gradient(ellipse at center, transparent 40%, rgba(0,0,0,0.55) 100%);
+    }
+
+    /* ── Notification pill (replaces emoji flash) ── */
+    #notifPill {
+      position: fixed;
+      top: 58px;
+      left: 50%;
+      transform: translateX(-50%) translateY(-20px);
+      z-index: 60;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 7px 18px;
+      background: rgba(20,22,34,0.92);
+      border: 1px solid var(--border);
+      border-left: 3px solid var(--mp);
+      border-radius: 20px;
+      backdrop-filter: blur(16px);
+      font-size: 12px;
+      font-weight: 400;
+      color: var(--text);
+      opacity: 0;
+      pointer-events: none;
+      transition: border-color 1.5s;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+      white-space: nowrap;
+    }
+    .notif-dot {
+      width: 7px; height: 7px;
+      border-radius: 50%;
+      background: var(--mp);
+      box-shadow: 0 0 6px var(--mp);
+      flex-shrink: 0;
+      transition: background 1.5s, box-shadow 1.5s;
+    }
+    @keyframes notif-in  { from { opacity:0; transform:translateX(-50%) translateY(-20px); } to { opacity:1; transform:translateX(-50%) translateY(0); } }
+    @keyframes notif-out { from { opacity:1; transform:translateX(-50%) translateY(0); } to { opacity:0; transform:translateX(-50%) translateY(-12px); } }
+
+    /* ── Emotional Analysis Panel (right side) ── */
+    #analysisPanel {
+      position: fixed;
+      right: 20px;
+      top: 50%;
+      transform: translateY(-50%);
+      z-index: 8;
+      width: 220px;
+      background: rgba(14,16,28,0.95);
+      border: 1px solid rgba(255,255,255,0.12);
+      border-radius: 16px;
+      backdrop-filter: blur(20px);
+      padding: 18px 16px;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.04);
+      transition: border-color 2s;
+    }
+    .ap-section-title {
+      font-size: 8.5px;
+      font-weight: 500;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      margin-bottom: 10px;
+    }
+    .ap-divider {
+      height: 1px;
+      background: var(--border);
+      margin: 14px 0;
+    }
+    .ap-primary-emotion {
+      font-family: "Cormorant Garamond", serif;
+      font-size: 20px;
+      font-style: italic;
+      color: var(--mp);
+      transition: color 1.5s;
+      margin-bottom: 4px;
+      line-height: 1;
+    }
+    .ap-primary-sub {
+      font-size: 9px;
+      color: var(--muted);
+      margin-bottom: 12px;
+    }
+    .ap-bar-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 7px;
+    }
+    .ap-bar-label {
+      font-size: 10px;
+      color: rgba(255,255,255,0.65);
+      width: 68px;
+      flex-shrink: 0;
+      text-align: right;
+    }
+    .ap-bar-track {
+      flex: 1;
+      height: 4px;
+      background: rgba(255,255,255,0.07);
+      border-radius: 2px;
+      overflow: hidden;
+    }
+    .ap-bar-fill {
+      height: 100%;
+      border-radius: 2px;
+      transition: width 1.4s cubic-bezier(0.4,0,0.2,1), background 1.5s;
+      box-shadow: 0 0 6px currentColor;
+    }
+    .ap-bar-pct {
+      font-size: 9px;
+      color: var(--muted);
+      width: 26px;
+      text-align: right;
+      flex-shrink: 0;
+    }
+    .ap-wave {
+      width: 100%;
+      height: 36px;
+      margin: 2px 0;
+    }
+    .ap-arc {
+      font-size: 10px;
+      color: rgba(255,255,255,0.5);
+      line-height: 1.6;
+      font-style: italic;
+      font-family: "Cormorant Garamond", serif;
+      font-size: 13px;
+    }
+    .ap-exchanges {
+      font-size: 9px;
+      color: var(--muted);
+      margin-top: 6px;
+    }
+
+    /* ── Session Intelligence bar ── */
+    #sessionBar {
+      font-size: 10px;
+      color: var(--muted);
+      padding: 5px 2px 3px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex-wrap: wrap;
+      min-height: 20px;
+      transition: color 1.5s;
+    }
+    .sb-tag {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      padding: 2px 8px;
+      border-radius: 8px;
+      background: rgba(255,255,255,0.04);
+      border: 1px solid var(--border);
+      font-size: 9.5px;
+      color: rgba(255,255,255,0.45);
+      white-space: nowrap;
+    }
+    .sb-dot {
+      width: 5px; height: 5px;
+      border-radius: 50%;
+      background: var(--mp);
+      transition: background 1.5s;
+    }
+
+    /* ── SVG Face ── */
+    
+
+    /* ── Emotion wheel (small) ── */
+    #wheelWrap {
+      position: fixed;
+      left: 20px;
+      top: 50%;
+      transform: translateY(-50%);
+      z-index: 5;
+    }
+    #emotionWheel { width: 100px; height: 100px; }
+
+    /* ── Topbar ── */
+    .topbar {
+      position: relative; z-index: 10;
+      padding: 13px 24px;
+      display: flex; align-items: center; justify-content: space-between;
+      border-bottom: 1px solid var(--border);
+      background: rgba(10,11,18,0.65);
+      backdrop-filter: blur(20px);
+    }
+    .brand { display:flex; align-items:baseline; gap:12px; }
+    .brand-name {
+      font-family: "Cormorant Garamond", serif;
+      font-size: 24px; font-weight:300; font-style:italic;
+      color: var(--mp); letter-spacing:0.03em;
+      transition: color 1.5s;
+    }
+    .brand-tagline {
+      font-size: 10px; color:var(--muted);
+      font-weight:300; letter-spacing:0.1em; text-transform:uppercase;
+    }
+    .topbar-center {
+      display:flex; align-items:center; gap:14px;
+    }
+    .mood-pill {
+      display:flex; align-items:center; gap:7px;
+      padding: 4px 13px 4px 9px;
+      border-radius:20px;
+      border: 1px solid var(--border);
+      background: rgba(255,255,255,0.04);
+      backdrop-filter: blur(8px);
+      font-size:11.5px;
+      transition: all 1.5s;
+    }
+    .mood-orb {
+      width:7px; height:7px; border-radius:50%;
+      background:var(--mp);
+      box-shadow: 0 0 8px var(--mp);
+      animation: orb-pulse 2s ease-in-out infinite;
+      transition: background 1.5s, box-shadow 1.5s;
+    }
+    @keyframes orb-pulse {
+      0%,100%{transform:scale(1);opacity:1;}
+      50%{transform:scale(1.4);opacity:0.65;}
+    }
+    .sentiment-row { display:flex; align-items:center; gap:7px; }
+    .s-bar-bg { width:70px; height:2.5px; background:rgba(255,255,255,0.08); border-radius:2px; overflow:hidden; }
+    .s-bar-fill { height:100%; width:50%; border-radius:2px; background:var(--mp); box-shadow:0 0 5px var(--mp); transition: width 1.2s ease, background 1.5s; }
+    .s-label { font-size:9.5px; color:var(--muted); white-space:nowrap; }
+    .solace-credit {
+      font-family:"Cormorant Garamond",serif;
+      font-size:13px; font-style:italic; font-weight:300;
+      color:var(--muted);
+    }
+
+    /* ── Chat wrap ── */
+    .chat-wrap {
+      flex:1; display:flex; flex-direction:column;
+      max-width:620px; width:100%; margin:0 auto;
+      padding:0 20px; overflow:hidden;
+      position:relative; z-index:2;
+    }
+    .messages {
+      flex:1; overflow-y:auto;
+      padding:24px 0 8px;
+      display:flex; flex-direction:column; gap:18px;
+      scrollbar-width:thin;
+      scrollbar-color: rgba(255,255,255,0.05) transparent;
+    }
+    .messages::-webkit-scrollbar { width:2px; }
+    .messages::-webkit-scrollbar-thumb { background:rgba(255,255,255,0.06); border-radius:1px; }
+
+    /* ── Bubbles ── */
+    .msg {
+      display:flex; gap:10px; max-width:92%;
+      animation: msg-in 0.5s cubic-bezier(0.34,1.4,0.64,1) both;
+    }
+    .msg.user   { align-self:flex-end;   flex-direction:row-reverse; }
+    .msg.bot,
+    .msg.crisis { align-self:flex-start; }
+    @keyframes msg-in {
+      from { opacity:0; transform:translateY(16px) scale(0.94); }
+      to   { opacity:1; transform:translateY(0) scale(1); }
+    }
+
+    .avatar {
+      width:32px; height:32px; border-radius:50%;
+      display:flex; align-items:center; justify-content:center;
+      font-size:15px; flex-shrink:0;
+      border:1px solid var(--border);
+    }
+    .avatar.bot  { background:rgba(255,255,255,0.04); }
+    .avatar.user {
+      background:var(--mp);
+      box-shadow:0 0 12px var(--mg);
+      transition: background 1.5s, box-shadow 1.5s;
+    }
+
+    .bubble-wrap { display:flex; flex-direction:column; gap:4px; max-width:100%; }
+    .bubble {
+      padding:13px 17px; border-radius:17px;
+      font-size:13px; line-height:1.8;
+    }
+    .msg.bot .bubble {
+      background:rgba(255,255,255,0.04);
+      border:1px solid var(--border);
+      border-top-left-radius:4px;
+      backdrop-filter:blur(10px);
+      box-shadow:0 4px 20px rgba(0,0,0,0.25), inset 0 1px 0 rgba(255,255,255,0.04);
+    }
+    .msg.user .bubble {
+      background:var(--mp); color:#fff;
+      border-top-right-radius:4px;
+      box-shadow:0 4px 18px var(--mg);
+      transition:background 1.5s, box-shadow 1.5s;
+    }
+    .msg.crisis .bubble {
+      background:rgba(201,64,64,0.1);
+      border:1px solid rgba(201,64,64,0.25);
+      border-top-left-radius:4px;
+    }
+    .mood-tag {
+      font-size:10px; color:var(--muted);
+      padding-left:2px; display:flex; align-items:center; gap:4px;
+    }
+
+    /* Typewriter cursor */
+    .cursor {
+      display:inline-block; width:2px; height:14px;
+      background:var(--mp); margin-left:2px;
+      animation:blink 0.8s step-end infinite;
+      vertical-align:middle;
+    }
+    @keyframes blink { 0%,100%{opacity:1;} 50%{opacity:0;} }
+
+    /* ── Typing dots ── */
+    .typing-wrap {
+      display:flex; gap:5px; padding:14px 17px;
+      background:rgba(255,255,255,0.04);
+      border:1px solid var(--border);
+      border-radius:17px; border-top-left-radius:4px;
+      backdrop-filter:blur(10px); width:fit-content;
+    }
+    .typing-wrap span {
+      width:5px; height:5px; background:var(--muted);
+      border-radius:50%; animation:tdot 1.3s ease-in-out infinite;
+    }
+    .typing-wrap span:nth-child(2){animation-delay:0.18s;}
+    .typing-wrap span:nth-child(3){animation-delay:0.36s;}
+    @keyframes tdot {
+      0%,60%,100%{transform:translateY(0);opacity:0.4;}
+      30%{transform:translateY(-6px);opacity:1;}
+    }
+
+    /* ── Bottom row ── */
+    .bottom-row {
+      display:flex; align-items:center;
+      justify-content:space-between;
+      padding:5px 0 4px;
+    }
+    .timeline-row {
+      display:flex; align-items:center; gap:5px;
+      overflow-x:auto; scrollbar-width:none; flex:1;
+    }
+    .timeline-row::-webkit-scrollbar{display:none;}
+    .tl-label { font-size:9px; color:var(--muted); white-space:nowrap; text-transform:uppercase; letter-spacing:0.07em; }
+    .tl-dot {
+      width:6px; height:6px; border-radius:50%; flex-shrink:0;
+      transition:transform 0.3s; cursor:default;
+    }
+    .tl-dot:hover{transform:scale(1.7);}
+
+    /* Breathe circle */
+    .breathe-wrap { display:flex; flex-direction:column; align-items:center; gap:3px; flex-shrink:0; margin-left:12px; }
+    .breathe-ring {
+      width:40px; height:40px; border-radius:50%;
+      border:1.5px solid var(--mp);
+      display:flex; align-items:center; justify-content:center;
+      animation:breathe-ring var(--bs,4s) ease-in-out infinite;
+      box-shadow:0 0 12px var(--mg);
+      transition:border-color 1.5s, box-shadow 1.5s;
+    }
+    @keyframes breathe-ring {
+      0%,100%{transform:scale(1);   box-shadow:0 0 6px var(--mg);}
+      50%    {transform:scale(1.28);box-shadow:0 0 20px var(--mg);}
+    }
+    .breathe-icon{font-size:17px;}
+    .breathe-label{font-size:8.5px;color:var(--muted);text-transform:uppercase;letter-spacing:0.1em;}
+
+    /* ── Input ── */
+    .input-area{padding:7px 0 16px;}
+    .input-bar {
+      display:flex; gap:9px; align-items:flex-end;
+      background:rgba(255,255,255,0.04);
+      border:1px solid var(--border); border-radius:25px;
+      padding:7px 7px 7px 18px;
+      backdrop-filter:blur(14px);
+      transition:border-color 0.5s, box-shadow 0.5s;
+    }
+    .input-bar:focus-within {
+      border-color:var(--mp);
+      box-shadow:0 0 0 3px var(--mg);
+    }
+    #msgInput {
+      flex:1; border:none; outline:none;
+      background:transparent;
+      font-family:"DM Sans",sans-serif;
+      font-size:13px; font-weight:300;
+      color:var(--text); resize:none;
+      max-height:100px; line-height:1.5; padding:3px 0;
+    }
+    #msgInput::placeholder{color:var(--muted);}
+    .send-btn {
+      width:38px; height:38px;
+      background:var(--mp); border:none; border-radius:50%;
+      color:#fff; cursor:pointer;
+      display:flex; align-items:center; justify-content:center;
+      transition:background 1.5s, transform 0.15s, box-shadow 1.5s;
+      box-shadow:0 0 10px var(--mg); flex-shrink:0;
+    }
+    .send-btn:hover:not(:disabled){transform:scale(1.1);}
+    .send-btn:active:not(:disabled){transform:scale(0.9);}
+    .send-btn:disabled{opacity:0.3;cursor:not-allowed;}
+    .send-btn svg{width:15px;height:15px;fill:#fff;}
+
+    @keyframes crisis-pulse {
+      0%,100%{box-shadow:0 0 0 0 rgba(201,64,64,0);}
+      50%    {box-shadow:0 0 0 8px rgba(201,64,64,0.15);}
+    }
+    .crisis-pulse-anim{animation:crisis-pulse 1.5s ease-in-out 4;}
+  </style>
+</head>
+<body class="e-neutral">
+
+<canvas id="canvas"></canvas>
+<div class="vignette"></div>
+
+<!-- Notification pill (replaces emoji flash) -->
+<div id="notifPill">
+  <div class="notif-dot" id="notifDot"></div>
+  <span id="notifText">Listening</span>
+</div>
+
+<!-- Emotional Analysis Panel -->
+<div id="analysisPanel">
+  <div class="ap-section-title">Emotional Analysis</div>
+  <div class="ap-primary-emotion" id="apPrimary">Neutral</div>
+  <div class="ap-primary-sub" id="apPrimarySub">Current state · session beginning</div>
+
+  <div class="ap-divider"></div>
+  <div class="ap-section-title">Contributing Signals</div>
+  <div id="apBars">
+    <div class="ap-bar-row">
+      <span class="ap-bar-label">—</span>
+      <div class="ap-bar-track"><div class="ap-bar-fill" style="width:0%;background:var(--mp)"></div></div>
+      <span class="ap-bar-pct">—</span>
+    </div>
+  </div>
+
+  <div class="ap-divider"></div>
+  <div class="ap-section-title">Sentiment Signal</div>
+  <svg class="ap-wave" id="apWave" viewBox="0 0 178 36" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none">
+    <path id="apWavePath" d="M0 18 Q22 18 44 18 Q66 18 89 18 Q112 18 134 18 Q156 18 178 18"
+      stroke="var(--mp)" stroke-width="2" fill="none" opacity="0.7"/>
+  </svg>
+
+  <div class="ap-divider"></div>
+  <div class="ap-section-title">Session Arc</div>
+  <div class="ap-arc" id="apArc">Listening...</div>
+  <div class="ap-exchanges" id="apExchanges">0 exchanges</div>
+</div>
+
+<!-- Emotion Wheel -->
+<div id="wheelWrap">
+  <svg id="emotionWheel" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <filter id="glow"><feGaussianBlur stdDeviation="2" result="blur"/><feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+    </defs>
+    <!-- Wheel segments — 8 emotions -->
+    <!-- joy -->      <path d="M100 100 L100 20 A80 80 0 0 1 156 44 Z" fill="#f0b429" opacity="0.25" id="ws-joy"/>
+    <!-- trust -->    <path d="M100 100 L156 44 A80 80 0 0 1 180 100 Z" fill="#4a9e6e" opacity="0.25" id="ws-trust"/>
+    <!-- fear -->     <path d="M100 100 L180 100 A80 80 0 0 1 156 156 Z" fill="#6b8fd4" opacity="0.25" id="ws-fear"/>
+    <!-- surprise --> <path d="M100 100 L156 156 A80 80 0 0 1 100 180 Z" fill="#e0a020" opacity="0.25" id="ws-surprise"/>
+    <!-- sadness -->  <path d="M100 100 L100 180 A80 80 0 0 1 44 156 Z" fill="#5a7ab5" opacity="0.25" id="ws-sadness"/>
+    <!-- disgust -->  <path d="M100 100 L44 156 A80 80 0 0 1 20 100 Z" fill="#7a6e40" opacity="0.25" id="ws-disgust"/>
+    <!-- anger -->    <path d="M100 100 L20 100 A80 80 0 0 1 44 44 Z" fill="#c4614a" opacity="0.25" id="ws-anger"/>
+    <!-- anticipation --> <path d="M100 100 L44 44 A80 80 0 0 1 100 20 Z" fill="#c47a30" opacity="0.25" id="ws-anticipation"/>
+    <!-- Labels -->
+    <text x="100" y="14"  text-anchor="middle" fill="#f0b429" font-size="8" font-family="DM Sans">Joy</text>
+    <text x="170" y="80"  text-anchor="middle" fill="#4a9e6e" font-size="8" font-family="DM Sans">Trust</text>
+    <text x="170" y="124" text-anchor="middle" fill="#6b8fd4" font-size="8" font-family="DM Sans">Fear</text>
+    <text x="124" y="190" text-anchor="middle" fill="#e0a020" font-size="8" font-family="DM Sans">Surprise</text>
+    <text x="76"  y="190" text-anchor="middle" fill="#5a7ab5" font-size="8" font-family="DM Sans">Sadness</text>
+    <text x="14"  y="124" text-anchor="middle" fill="#7a6e40" font-size="8" font-family="DM Sans">Disgust</text>
+    <text x="14"  y="80"  text-anchor="middle" fill="#c4614a" font-size="8" font-family="DM Sans">Anger</text>
+    <text x="50"  y="14"  text-anchor="middle" fill="#c47a30" font-size="8" font-family="DM Sans">Anticipation</text>
+    <!-- Center dot -->
+    <circle id="wheelDot" cx="100" cy="100" r="10" fill="var(--mp)" filter="url(#glow)" opacity="0.9"/>
+    <!-- Pointer line -->
+    <line id="wheelPointer" x1="100" y1="100" x2="100" y2="26" stroke="var(--mp)" stroke-width="2" stroke-linecap="round" opacity="0.8"/>
+  </svg>
+</div>
+
+<!-- Topbar -->
+<div class="topbar">
+  <div class="brand">
+    <span class="brand-name">Solace</span>
+    <span class="brand-tagline">I'm always here. Talk to me.</span>
+  </div>
+  <div class="topbar-center">
+    <div class="sentiment-row">
+      <span class="s-label" id="sLabel">Emotional tone</span>
+      <div class="s-bar-bg"><div class="s-bar-fill" id="sBar"></div></div>
+    </div>
+    <div class="mood-pill">
+      <div class="mood-orb" id="moodOrb"></div>
+      <span id="moodText">Listening</span>
+    </div>
+  </div>
+  <div class="solace-credit">✦ &nbsp;a safe space, always open</div>
+</div>
+
+<!-- Chat -->
+<div class="chat-wrap">
+  <div class="messages" id="messages">
+    <div class="msg bot">
+      <div class="avatar bot">🌙</div>
+      <div class="bubble-wrap">
+        <div class="bubble">Hello. I'm Solace.<br/><br/>This is your space — no judgment, no rush. Whatever is on your mind or in your heart, I'm here.<br/><br/>How are you feeling right now?</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="bottom-row">
+    <div class="timeline-row" id="timeline">
+      <span class="tl-label">your journey</span>
+    </div>
+    <div class="breathe-wrap">
+      <div class="breathe-ring"><span class="breathe-icon">🌙</span></div>
+      <span class="breathe-label">breathe</span>
+    </div>
+  </div>
+
+  <!-- Session Intelligence Bar -->
+  <div id="sessionBar">
+    <div class="sb-tag"><div class="sb-dot"></div><span id="sbExchanges">Session started</span></div>
+    <div class="sb-tag" id="sbArcTag" style="display:none"><span id="sbArc">—</span></div>
+    <div class="sb-tag" id="sbStressTag" style="display:none"><span id="sbStress">—</span></div>
+  </div>
+
+  <div class="input-area">
+    <div class="input-bar">
+      <textarea id="msgInput" rows="1"
+        placeholder="Share what's on your mind..."
+        onkeydown="handleKey(event)"
+        oninput="autoResize(this)"></textarea>
+      <button class="send-btn" id="sendBtn" onclick="sendMessage()">
+        <svg viewBox="0 0 24 24"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Audio context for tones -->
+<script>
+// ── Emotion config ─────────────────────────────────────────────
+const EMOTIONS = {
+  joy          :{ label:"Joy",          emoji:"✨", cls:"e-joy",          color:"#f0b429", wheel:"ws-joy",          angle:270, face:"joy",       freq:528, cheek:true  },
+  trust        :{ label:"Trust",        emoji:"🤝", cls:"e-trust",        color:"#4a9e6e", wheel:"ws-trust",        angle:315, face:"content",   freq:396, cheek:true  },
+  fear         :{ label:"Fear",         emoji:"😰", cls:"e-fear",         color:"#6b8fd4", wheel:"ws-fear",         angle:0,   face:"fearful",   freq:285, sweat:true  },
+  surprise     :{ label:"Surprise",     emoji:"😮", cls:"e-surprise",     color:"#e0a020", wheel:"ws-surprise",     angle:45,  face:"surprised", freq:432           },
+  sadness      :{ label:"Sadness",      emoji:"😢", cls:"e-sadness",      color:"#5a7ab5", wheel:"ws-sadness",      angle:90,  face:"sad",       freq:174, tears:true  },
+  disgust      :{ label:"Disgust",      emoji:"😤", cls:"e-disgust",      color:"#7a6e40", wheel:"ws-disgust",      angle:135, face:"disgusted", freq:285           },
+  anger        :{ label:"Anger",        emoji:"🔥", cls:"e-anger",        color:"#c4614a", wheel:"ws-anger",        angle:180, face:"angry",     freq:285           },
+  anticipation :{ label:"Anticipation", emoji:"⚡", cls:"e-anticipation", color:"#c47a30", wheel:"ws-anticipation", angle:225, face:"curious",   freq:396           },
+  neutral      :{ label:"Neutral",      emoji:"🌙", cls:"e-neutral",      color:"#8b7cf8", wheel:"ws-neutral",      angle:270, face:"neutral",   freq:432           },
+  crisis       :{ label:"Crisis",       emoji:"🆘", cls:"e-crisis",       color:"#c94040", wheel:"ws-crisis",       angle:90,  face:"distressed",freq:174, tears:true },
+};
+
+// Mood → Plutchik emotion mapping
+const MOOD_TO_EMOTION = {
+  anxious  : "fear",
+  sad      : "sadness",
+  angry    : "anger",
+  positive : "joy",
+  neutral  : "neutral",
+  crisis   : "crisis",
+  happy    : "joy",
+  excited  : "anticipation",
+  grateful : "trust",
+  surprised: "surprise",
+};
+
+let sessionId    = null;
+let currentEmotion = "neutral";
+let particles    = [];
+let audioCtx     = null;
+
+// ── Smooth background theme transition ─────────────────────────────────────
+// CSS custom properties can't be transitioned — we interpolate via JS
+const BG_THEMES = {
+  // [R, G, B] — vivid enough to see but dark enough to stay professional
+  // joy: warm golden amber (like screenshot 3)
+  'e-joy'         : { a:[38,28,4],    b:[58,42,6]    },
+  // trust: deep forest green
+  'e-trust'       : { a:[6,28,20],    b:[10,44,30]   },
+  // fear/anxious: deep navy blue (like screenshot 1 dark blue tint)
+  'e-fear'        : { a:[8,18,52],    b:[12,28,72]   },
+  // surprise: warm amber
+  'e-surprise'    : { a:[38,28,4],    b:[54,38,6]    },
+  // sadness: rich deep blue-indigo (clearly visible, like screenshot 1 sadness)
+  'e-sadness'     : { a:[8,10,48],    b:[12,16,68]   },
+  // disgust: muted olive
+  'e-disgust'     : { a:[22,20,8],    b:[32,28,10]   },
+  // anger: deep red (like screenshot 6 crisis red)
+  'e-anger'       : { a:[52,10,8],    b:[72,14,10]   },
+  // anticipation: warm orange-brown
+  'e-anticipation': { a:[40,26,4],    b:[56,36,6]    },
+  // neutral: default dark blue-black
+  'e-neutral'     : { a:[10,11,18],   b:[14,16,32]   },
+  // crisis: deep crimson red (vivid, like screenshots 4, 5, 6)
+  'e-crisis'      : { a:[58,6,6],     b:[82,10,10]   },
+};
+
+let _bgCurrent = { a:[10,11,18], b:[14,16,32] };
+let _bgTarget  = { a:[10,11,18], b:[14,16,32] };
+let _bgAnimId  = null;
+
+function setBgTheme(emotionClass) {
+  const target = BG_THEMES[emotionClass] || BG_THEMES['e-neutral'];
+  _bgTarget = { a:[...target.a], b:[...target.b] };
+  if (!_bgAnimId) _bgAnimId = requestAnimationFrame(_animateBg);
+}
+
+function _animateBg() {
+  const SPEED = 0.045; // smooth but clearly visible
+  let stillMoving = false;
+  ['a','b'].forEach(k => {
+    for (let i=0; i<3; i++) {
+      const diff = _bgTarget[k][i] - _bgCurrent[k][i];
+      if (Math.abs(diff) > 0.2) {
+        _bgCurrent[k][i] += diff * SPEED;
+        stillMoving = true;
+      } else {
+        _bgCurrent[k][i] = _bgTarget[k][i];
+      }
+    }
+  });
+  const ra = _bgCurrent.a, rb = _bgCurrent.b;
+  // Rich gradient: darker at center, colored at edges for immersive feel
+  document.body.style.background =
+    `linear-gradient(135deg, rgb(${rb[0]|0},${rb[1]|0},${rb[2]|0}) 0%, rgb(${ra[0]|0},${ra[1]|0},${ra[2]|0}) 50%, rgb(${rb[0]|0},${rb[1]|0},${rb[2]|0}) 100%)`;
+  if (stillMoving) {
+    _bgAnimId = requestAnimationFrame(_animateBg);
+  } else {
+    _bgAnimId = null;
+  }
+}
+
+// Start background loop immediately
+_animateBg();
+
+
+// ── Canvas particles ───────────────────────────────────────────
+const canvas = document.getElementById("canvas");
+const ctx    = canvas.getContext("2d");
+
+function resizeCanvas() { canvas.width = window.innerWidth; canvas.height = window.innerHeight; }
+resizeCanvas();
+window.addEventListener("resize", resizeCanvas);
+
+function getColor() { return (EMOTIONS[currentEmotion]||EMOTIONS.neutral).color; }
+
+function spawnParticle() {
+  const e = currentEmotion;
+  let x, y, vx, vy, size, opacity, life, shape="circle";
+
+  if (e === "joy" || e === "anticipation") {
+    x=Math.random()*canvas.width; y=canvas.height+10;
+    vx=(Math.random()-0.5)*1.2; vy=-(Math.random()*1.5+0.5);
+    size=Math.random()*4+1; opacity=Math.random()*0.5+0.1; life=Math.random()*180+80;
+  } else if (e === "sadness" || e === "crisis") {
+    x=Math.random()*canvas.width; y=-10;
+    vx=(Math.random()-0.5)*0.4; vy=Math.random()*0.9+0.3;
+    size=Math.random()*2+0.5; opacity=Math.random()*0.35+0.05; life=Math.random()*220+100;
+  } else if (e === "fear") {
+    x=Math.random()*canvas.width; y=Math.random()*canvas.height;
+    vx=(Math.random()-0.5)*2.5; vy=(Math.random()-0.5)*2.5;
+    size=Math.random()*1.5+0.5; opacity=Math.random()*0.3+0.05; life=Math.random()*80+40;
+  } else if (e === "anger") {
+    x=Math.random()*canvas.width; y=canvas.height+5;
+    vx=(Math.random()-0.5)*1.5; vy=-(Math.random()*1.2+0.3);
+    size=Math.random()*3.5+1; opacity=Math.random()*0.4+0.1; life=Math.random()*150+60;
+  } else if (e === "surprise") {
+    x=canvas.width/2+(Math.random()-0.5)*200; y=canvas.height/2+(Math.random()-0.5)*200;
+    vx=(Math.random()-0.5)*3; vy=(Math.random()-0.5)*3;
+    size=Math.random()*3+1; opacity=Math.random()*0.4+0.1; life=Math.random()*100+50;
+  } else if (e === "trust") {
+    x=Math.random()*canvas.width; y=Math.random()*canvas.height;
+    vx=(Math.random()-0.5)*0.6; vy=-Math.random()*0.4-0.1;
+    size=Math.random()*3+1; opacity=Math.random()*0.25+0.05; life=Math.random()*300+150;
+  } else {
+    x=Math.random()*canvas.width; y=Math.random()*canvas.height;
+    vx=(Math.random()-0.5)*0.5; vy=(Math.random()-0.5)*0.5;
+    size=Math.random()*2+0.5; opacity=Math.random()*0.2+0.05; life=Math.random()*200+100;
+  }
+  particles.push({x,y,vx,vy,size,opacity,life,maxLife:life});
+}
+
+function drawLoop() {
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+  const color = getColor();
+  if (Math.random()<0.4) spawnParticle();
+  for (let i=particles.length-1; i>=0; i--) {
+    const p=particles[i];
+    p.x+=p.vx; p.y+=p.vy; p.life--;
+    const alpha = p.opacity*(p.life/p.maxLife);
+    ctx.save();
+    ctx.globalAlpha=alpha;
+    ctx.fillStyle=color;
+    ctx.beginPath();
+    ctx.arc(p.x,p.y,p.size,0,Math.PI*2);
+    ctx.fill();
+    ctx.restore();
+    if (p.life<=0||p.x<-30||p.x>canvas.width+30||p.y<-30||p.y>canvas.height+30)
+      particles.splice(i,1);
+  }
+  requestAnimationFrame(drawLoop);
+}
+drawLoop();
+
+// ── Audio tones ────────────────────────────────────────────────
+function initAudio() {
+  if (!audioCtx) audioCtx = new (window.AudioContext||window.webkitAudioContext)();
+}
+function playTone(freq, duration=1.2, type="sine") {
+  try {
+    initAudio();
+    if (audioCtx.state === "suspended") audioCtx.resume();
+    const osc  = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.connect(gain); gain.connect(audioCtx.destination);
+    osc.type = type;
+    osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+    gain.gain.setValueAtTime(0, audioCtx.currentTime);
+    gain.gain.linearRampToValueAtTime(0.04, audioCtx.currentTime+0.15);
+    gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime+duration);
+    osc.start(audioCtx.currentTime);
+    osc.stop(audioCtx.currentTime+duration);
+  } catch(e) {}
+}
+
+// ── SVG Face morphing ──────────────────────────────────────────
+
+// ── Emotion wheel pointer ──────────────────────────────────────
+function setWheelPointer(angle) {
+  const rad  = (angle-90) * Math.PI/180;
+  const r    = 70;
+  const x2   = 100 + r*Math.cos(rad);
+  const y2   = 100 + r*Math.sin(rad);
+  const line = document.getElementById("wheelPointer");
+  line.setAttribute("x2", x2.toFixed(1));
+  line.setAttribute("y2", y2.toFixed(1));
+
+  // Highlight active segment
+  document.querySelectorAll("[id^='ws-']").forEach(el => {
+    el.setAttribute("opacity","0.18");
+    el.style.filter = "";
+  });
+  const seg = document.getElementById("ws-"+currentEmotion);
+  if (seg) { seg.setAttribute("opacity","0.7"); seg.style.filter="url(#glow)"; }
+}
+
+// ── Emotion flash overlay ──────────────────────────────────────
+function showEmotionFlash(emotion){
+  const cfg = EMOTIONS[emotion] || EMOTIONS[MOOD_TO_EMOTION[emotion]] || EMOTIONS.neutral;
+  const pill = document.getElementById("notifPill");
+  const dot  = document.getElementById("notifDot");
+  const txt  = document.getElementById("notifText");
+  if(!pill) return;
+  txt.textContent = cfg.label + " detected";
+  dot.style.background = cfg.color;
+  dot.style.boxShadow  = `0 0 6px ${cfg.color}`;
+  pill.style.borderLeftColor = cfg.color;
+  if(window._notifTimer) clearTimeout(window._notifTimer);
+  pill.style.animation = "none";
+  void pill.offsetHeight;
+  pill.style.animation = "notif-in 0.35s ease forwards";
+  window._notifTimer = setTimeout(() => {
+    pill.style.animation = "notif-out 0.4s ease forwards";
+  }, 2500);
+}
+
+// ── Typewriter effect ──────────────────────────────────────────
+
+// ── Update Analysis Panel ─────────────────────────────────────────────────
+let exchangeCount = 0;
+const emotionArcList = [];
+const BAR_COLORS_AP = {
+  anxious:"#6b8fd4", sad:"#5a7ab5", angry:"#c4614a",
+  positive:"#f0b429", neutral:"#8b7cf8", crisis:"#c94040",
+  loneliness:"#4a6090", sadness:"#5a7ab5", anxiety:"#6b8fd4",
+  anger:"#c4614a", joy:"#f0b429", hope:"#60c080",
+  exhaustion:"#6060a0", confusion:"#a07040",
+};
+
+function updateAnalysisPanel(data) {
+  exchangeCount++;
+  const rawMood = data.mood || data.primary_emotion || "neutral";
+  const em = MOOD_TO_EMOTION[rawMood] || (EMOTIONS[rawMood] ? rawMood : "neutral");
+  const cfg  = EMOTIONS[em] || EMOTIONS.neutral;
+  const scores = data.emotion_scores || {};
+
+  // Primary
+  const primary = document.getElementById("apPrimary");
+  const primarySub = document.getElementById("apPrimarySub");
+  if(primary) {
+    primary.textContent = cfg.label;
+    primary.style.color = cfg.color;
+  }
+  if(primarySub) {
+    const intensity = data.stress_level > 70 ? "High intensity" :
+                      data.stress_level > 40 ? "Moderate" : "Mild";
+    primarySub.textContent = `${intensity} · exchange ${exchangeCount}`;
+  }
+
+  // Bars
+  const barsEl = document.getElementById("apBars");
+  if(barsEl && Object.keys(scores).length > 0) {
+    const sorted = Object.entries(scores).sort((a,b)=>b[1]-a[1]).slice(0,4);
+    barsEl.innerHTML = sorted.map(([emo, pct]) => `
+      <div class="ap-bar-row">
+        <span class="ap-bar-label">${emo.charAt(0).toUpperCase()+emo.slice(1)}</span>
+        <div class="ap-bar-track">
+          <div class="ap-bar-fill" style="width:${pct}%;background:${BAR_COLORS_AP[emo]||'#8b7cf8'};color:${BAR_COLORS_AP[emo]||'#8b7cf8'}"></div>
+        </div>
+        <span class="ap-bar-pct">${pct}%</span>
+      </div>`).join('');
+  }
+
+  // Wave — animate based on stress
+  updateWave(data.stress_level || 30);
+
+  // Arc
+  emotionArcList.push(em);
+  const arcEl = document.getElementById("apArc");
+  if(arcEl) {
+    if(emotionArcList.length === 1) {
+      arcEl.textContent = cfg.label;
+    } else {
+      const unique = [...new Set(emotionArcList)];
+      arcEl.textContent = unique.slice(-4).join(" → ");
+    }
+  }
+  const exEl = document.getElementById("apExchanges");
+  if(exEl) exEl.textContent = `${exchangeCount} exchange${exchangeCount!==1?'s':''}`;
+
+  // Border color
+  const panel = document.getElementById("analysisPanel");
+  if(panel) panel.style.borderColor = cfg.color+"44";
+
+  // Session bar
+  updateSessionBar(data, em, cfg);
+}
+
+// ── Sentiment Waveform ────────────────────────────────────────────────────
+let wavePhase = 0;
+function updateWave(stressLevel) {
+  const amplitude = (stressLevel / 100) * 14;
+  const freq = stressLevel > 70 ? 3 : stressLevel > 40 ? 2 : 1.2;
+  const path = document.getElementById("apWavePath");
+  if(!path) return;
+  const pts = [];
+  for(let x=0; x<=178; x+=8) {
+    const y = 18 + amplitude * Math.sin((x/178)*Math.PI*2*freq + wavePhase);
+    pts.push(`${x},${y.toFixed(1)}`);
+  }
+  path.setAttribute("d", "M" + pts.join(" L"));
+  wavePhase += 0.3;
+  // Animate wave continuously
+  if(!window._waveAnimating) {
+    window._waveAnimating = true;
+    function animWave() {
+      if(!document.getElementById("apWavePath")) return;
+      wavePhase += 0.08;
+      const amp2 = (window._currentStress||30) / 100 * 14;
+      const fr2  = (window._currentStress||30) > 70 ? 3 : 2;
+      const pts2 = [];
+      for(let x=0; x<=178; x+=8) {
+        const y = 18 + amp2 * Math.sin((x/178)*Math.PI*2*fr2 + wavePhase);
+        pts2.push(`${x},${y.toFixed(1)}`);
+      }
+      document.getElementById("apWavePath").setAttribute("d","M"+pts2.join(" L"));
+      requestAnimationFrame(animWave);
+    }
+    animWave();
+  }
+  window._currentStress = stressLevel;
+}
+
+// ── Session Intelligence Bar ──────────────────────────────────────────────
+function updateSessionBar(data, em, cfg) {
+  const sbEx = document.getElementById("sbExchanges");
+  if(sbEx) sbEx.textContent = `${exchangeCount} exchange${exchangeCount!==1?'s':''}`;
+
+  const sbArcTag = document.getElementById("sbArcTag");
+  const sbArc    = document.getElementById("sbArc");
+  if(sbArcTag && sbArc && emotionArcList.length >= 2) {
+    sbArcTag.style.display = "flex";
+    const unique = [...new Set(emotionArcList)];
+    sbArc.textContent = unique.slice(-3).join(" → ");
+  }
+
+  const sbStressTag = document.getElementById("sbStressTag");
+  const sbStress    = document.getElementById("sbStress");
+  if(sbStressTag && sbStress) {
+    sbStressTag.style.display = "flex";
+    const stress = data.stress_level || 0;
+    const energy = data.energy_level || 50;
+    const stressDir = exchangeCount > 1 && stress < 50 ? "Stress ↓" : stress > 70 ? "Stress ↑" : "Stress →";
+    const energyDir = energy > 50 ? "Energy ↑" : "Energy ↓";
+    sbStress.textContent = `${stressDir} · ${energyDir}`;
+  }
+
+  // Dot color
+  document.querySelectorAll(".sb-dot").forEach(d => {
+    d.style.background = cfg.color;
+  });
+}
+
+function typeWriter(element, text, speed) {
+  return new Promise(resolve => {
+    let i = 0;
+    const cursor = document.createElement("span");
+    cursor.className = "cursor";
+    element.appendChild(cursor);
+
+    const interval = setInterval(() => {
+      if (i < text.length) {
+        cursor.before(document.createTextNode(text[i]));
+        i++;
+        // scroll
+        const msgs = document.getElementById("messages");
+        msgs.scrollTop = msgs.scrollHeight;
+      } else {
+        clearInterval(interval);
+        cursor.remove();
+        resolve();
+      }
+    }, speed);
+  });
+}
+
+// ── Update all mood UI ─────────────────────────────────────────
+function updateEmotionUI(mood, sentiment, isCrisis) {
+  const emotionKey = isCrisis ? "crisis" : (MOOD_TO_EMOTION[mood] || EMOTIONS[mood] ? mood : "neutral");
+  const cfg        = EMOTIONS[emotionKey] || EMOTIONS.neutral;
+  if(!cfg) return; // safety guard
+  currentEmotion   = emotionKey;
+
+  // Body class
+  // Set both emotion class and mood background class
+  const newCls = (cfg.cls || "e-neutral");
+  document.body.className = newCls + " mood-" + (mood || "neutral");
+  setBgTheme(newCls);  // smooth JS background transition
+  // Update mood emoji in topbar
+  const moodEmojiEl = document.getElementById("moodEmoji");
+  if(moodEmojiEl) moodEmojiEl.textContent = cfg.emoji || "🌙";
+
+  // Wheel
+  try { setWheelPointer(cfg.angle); } catch(e) {}
+
+  // Badge
+  document.getElementById("moodText").textContent = cfg.label;
+
+  // Sentiment bar
+  if (sentiment) {
+    const compound = sentiment.compound;
+    const pct = Math.round(((compound+1)/2)*100);
+    document.getElementById("sBar").style.width = pct + "%";
+    document.getElementById("sLabel").textContent =
+      compound < -0.3 ? "Heavy" : compound > 0.3 ? "Light" : "Balanced";
+  }
+
+  // Timeline dot
+  const tl  = document.getElementById("timeline");
+  const dot = document.createElement("div");
+  dot.className = "tl-dot";
+  dot.style.background = cfg.color;
+  dot.style.boxShadow  = `0 0 5px ${cfg.color}`;
+  dot.title = cfg.label;
+  tl.appendChild(dot);
+  tl.scrollLeft = tl.scrollWidth;
+
+  // Audio tone
+  playTone(cfg.freq || 432, 1.5);
+
+  // Crisis border
+  if (isCrisis) {
+    document.querySelector(".topbar").style.borderBottomColor = "rgba(201,64,64,0.4)";
+  }
+}
+
+// ── Session init ───────────────────────────────────────────────
+window.onload = async () => {
+  const res  = await fetch("/api/new_session", { method:"POST" });
+  const data = await res.json();
+  sessionId  = data.session_id;
+};
+
+// ── Send message ───────────────────────────────────────────────
+async function sendMessage() {
+  const input   = document.getElementById("msgInput");
+  const message = input.value.trim();
+  if (!message || !sessionId) return;
+
+  input.value = "";
+  autoResize(input);
+  appendUserMsg(message);
+
+  const sendBtn    = document.getElementById("sendBtn");
+  sendBtn.disabled = true;
+  const typingId   = appendTyping();
+
+  try {
+    const res  = await fetch("/api/chat", {
+      method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({ session_id:sessionId, message }),
+    });
+    const data = await res.json();
+    removeEl(typingId);
+
+    // Show emotion flash BEFORE response
+    const emotionKey = data.is_crisis ? "crisis" : (MOOD_TO_EMOTION[data.mood] || data.mood || "neutral");
+    showEmotionFlash(emotionKey);
+
+    // Small delay then show response with typewriter
+    setTimeout(async () => {
+      updateEmotionUI(data.mood, data.sentiment, data.is_crisis);
+      updateAnalysisPanel(data);
+      await appendBotMsg(data.response, data.mood, data.is_crisis);
+      sendBtn.disabled = false;
+    }, 900);
+
+  } catch(e) {
+    removeEl(typingId);
+    sendBtn.disabled = false;
+    await appendBotMsg("I lost connection for a moment. I'm still here — please try again.", "neutral", false);
+  }
+}
+
+function handleKey(e) {
+  if (e.key==="Enter"&&!e.shiftKey){e.preventDefault();sendMessage();}
+}
+function autoResize(el) {
+  el.style.height="auto";
+  el.style.height=Math.min(el.scrollHeight,100)+"px";
+}
+
+// ── Append user message ────────────────────────────────────────
+function appendUserMsg(text) {
+  const msgs = document.getElementById("messages");
+  const wrap = document.createElement("div");
+  wrap.className = "msg user";
+  wrap.innerHTML = `
+    <div class="bubble-wrap"><div class="bubble">${escHtml(text)}</div></div>
+    <div class="avatar user">🧘</div>`;
+  msgs.appendChild(wrap);
+  msgs.scrollTop = msgs.scrollHeight;
+}
+
+// ── Append bot message with typewriter ────────────────────────
+async function appendBotMsg(text, mood, isCrisis) {
+  const msgs = document.getElementById("messages");
+  const type = isCrisis ? "crisis" : "bot";
+  const emotionKey = isCrisis ? "crisis" : (MOOD_TO_EMOTION[mood]||"neutral");
+  const cfg  = EMOTIONS[emotionKey] || EMOTIONS.neutral;
+
+  const wrap = document.createElement("div");
+  wrap.className = `msg ${type}`;
+  if (isCrisis) wrap.classList.add("crisis-pulse-anim");
+
+  const bubbleEl = document.createElement("div");
+  bubbleEl.className = "bubble";
+
+  const moodTag = !isCrisis
+    ? `<div class="mood-tag">${cfg.emoji}&nbsp;<span>${cfg.label}</span></div>`
+    : "";
+
+  wrap.innerHTML = `<div class="avatar bot">🌙</div><div class="bubble-wrap"></div>`;
+  wrap.querySelector(".bubble-wrap").appendChild(bubbleEl);
+  if (moodTag) wrap.querySelector(".bubble-wrap").insertAdjacentHTML("beforeend", moodTag);
+
+  msgs.appendChild(wrap);
+  msgs.scrollTop = msgs.scrollHeight;
+
+  // Typewriter speed based on emotion
+  const speeds = { sadness:55, fear:35, anger:30, joy:40, neutral:45, crisis:50 };
+  const speed  = speeds[emotionKey] || 42;
+
+  // Strip markdown for display
+  const plain = text.replace(/\*\*(.*?)\*\*/g,"$1");
+  await typeWriter(bubbleEl, plain, speed);
+}
+
+// ── Typing indicator ───────────────────────────────────────────
+let tc=0;
+function appendTyping() {
+  const id   = "t_"+(++tc);
+  const msgs = document.getElementById("messages");
+  const wrap = document.createElement("div");
+  wrap.className="msg bot"; wrap.id=id;
+  wrap.innerHTML=`<div class="avatar bot">🌙</div><div class="typing-wrap"><span></span><span></span><span></span></div>`;
+  msgs.appendChild(wrap);
+  msgs.scrollTop=msgs.scrollHeight;
+  return id;
+}
+function removeEl(id){const el=document.getElementById(id);if(el)el.remove();}
+function escHtml(t){return t.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/\n/g,"<br/>");}
+</script>
+</body>
+</html>
