@@ -1,4 +1,4 @@
-# Solace — AI-Powered Mental Health Companion
+# Solace - AI-Powered Mental Health Companion
 
 ![Python](https://img.shields.io/badge/Python-3.10-blue)
 ![Gemini](https://img.shields.io/badge/LLM-Gemini%201.5%20Flash-orange)
@@ -7,15 +7,15 @@
 ![Flask](https://img.shields.io/badge/Backend-Flask-lightgrey)
 ![Status](https://img.shields.io/badge/Status-Active-success)
 
-> Type how you feel. Solace listens, understands, and responds — with real-time emotion detection, adaptive background themes, and a live emotional analysis panel that tracks your session journey.
+> Type how you feel. Solace listens, understands, and responds - with real-time emotion detection, adaptive background themes, and a live emotional analysis panel that tracks your session journey.
 
-Built as part of an AI/ML portfolio — a production-level mental health companion combining LLM-based conversation, VADER sentiment analysis, multi-emotion scoring and a fully designed therapeutic UI.
+Built as part of an AI/ML portfolio - a production-level mental health companion combining LLM-based conversation, VADER sentiment analysis, multi-emotion scoring and a fully designed therapeutic UI.
 
 ---
 
 ## Screenshots
 
-| Default — Session Start | Sadness Detected |
+| Default - Session Start | Sadness Detected |
 |---|---|
 | ![Dashboard](screenshots/dashboard.png) | ![Sadness](screenshots/Deep%20Blue%20(Sadness%20test).png) |
 
@@ -31,17 +31,17 @@ Built as part of an AI/ML portfolio — a production-level mental health compani
 
 ## What It Does
 
-- ✅ Real-time emotion detection — VADER sentiment + keyword scoring across 5 mood profiles
-- ✅ Adaptive background themes — full-screen color shift per detected emotion (blue, crimson, gold, purple, red)
-- ✅ Emotional Analysis Panel — live emotion bars, sentiment waveform, session arc tracking
-- ✅ Session Intelligence Bar — exchange count, emotion journey, stress and energy indicators
-- ✅ Crisis detection — 14 crisis keywords + VADER compound threshold → instant helpline response
-- ✅ Typewriter text reveal — speed varies by detected emotion (slower for sadness, faster for anxiety)
-- ✅ Breathing synchronization — full-screen 4-4-6-2 box breathing overlay
-- ✅ Memory timeline — colored emotional journey dots at bottom of session
-- ✅ Plutchik emotion wheel — live pointer tracks detected emotion
-- ✅ Particle weather system — background particles match emotional state
-- ✅ Dual LLM setup — Groq (Llama 3.1) primary with full Gemini fallback chain
+- ✅ Real-time emotion detection - VADER sentiment + keyword scoring across 5 mood profiles
+- ✅ Adaptive background themes - full-screen color shift per detected emotion (blue, crimson, gold, purple, red)
+- ✅ Emotional Analysis Panel - live emotion bars, sentiment waveform, session arc tracking
+- ✅ Session Intelligence Bar - exchange count, emotion journey, stress and energy indicators
+- ✅ Crisis detection - 14 crisis keywords + VADER compound threshold → instant helpline response
+- ✅ Typewriter text reveal - speed varies by detected emotion (slower for sadness, faster for anxiety)
+- ✅ Breathing synchronization - full-screen 4-4-6-2 box breathing overlay
+- ✅ Memory timeline - colored emotional journey dots at bottom of session
+- ✅ Plutchik emotion wheel - live pointer tracks detected emotion
+- ✅ Particle weather system - background particles match emotional state
+- ✅ Dual LLM setup - Groq (Llama 3.1) primary with full Gemini fallback chain
 - ✅ CBT and person-centred counselling principles baked into the system prompt
 
 ---
@@ -49,16 +49,16 @@ Built as part of an AI/ML portfolio — a production-level mental health compani
 ## How It Works
 
 **Emotion Detection**
-Every user message goes through two layers. VADER computes a compound sentiment score (−1 to +1) for intensity classification. A keyword scorer matches against 5 mood profiles — anxious, sad, angry, positive, neutral — with weighted keyword lists. The highest-scoring profile becomes the primary mood. Multi-emotion scoring then computes percentage contributions across all detected emotion signals.
+Every user message goes through two layers. VADER computes a compound sentiment score (−1 to +1) for intensity classification. A keyword scorer matches against 5 mood profiles - anxious, sad, angry, positive, neutral - with weighted keyword lists. The highest-scoring profile becomes the primary mood. Multi-emotion scoring then computes percentage contributions across all detected emotion signals.
 
 **LLM Response Generation**
-The detected mood, intensity, emotional arc and session history are injected into a structured system prompt based on CBT, mindfulness and person-centred counselling principles. Solace responds in 3-4 sentences maximum — acknowledge → reflect → explore. Response speed is intentional: sadness responses type slower, anxiety responses type faster.
+The detected mood, intensity, emotional arc and session history are injected into a structured system prompt based on CBT, mindfulness and person-centred counselling principles. Solace responds in 3-4 sentences maximum - acknowledge → reflect → explore. Response speed is intentional: sadness responses type slower, anxiety responses type faster.
 
 **Crisis Handling**
-14 hardcoded crisis keywords are checked before any LLM call. If triggered, or if VADER compound drops below −0.85, the response bypasses the LLM entirely and returns immediate helpline numbers — iCall, Vandrevala Foundation, AASRA and Befrienders International — with no API latency.
+14 hardcoded crisis keywords are checked before any LLM call. If triggered, or if VADER compound drops below −0.85, the response bypasses the LLM entirely and returns immediate helpline numbers - iCall, Vandrevala Foundation, AASRA and Befrienders International - with no API latency.
 
 **Adaptive UI**
-Every bot response triggers a smooth JS background interpolation — 60fps RAF loop blending current RGB values toward the target emotion color. No CSS transitions (which don't animate custom properties) — pure JS-driven gradient animation.
+Every bot response triggers a smooth JS background interpolation - 60fps RAF loop blending current RGB values toward the target emotion color. No CSS transitions (which don't animate custom properties) - pure JS-driven gradient animation.
 
 ---
 
@@ -81,7 +81,7 @@ Every bot response triggers a smooth JS background interpolation — 60fps RAF l
 
 | Layer | Technology |
 |---|---|
-| LLM (Primary) | Groq API — Llama 3.1 8B Instant |
+| LLM (Primary) | Groq API - Llama 3.1 8B Instant |
 | LLM (Fallback) | Google Gemini 1.5 Flash / 2.0 Flash |
 | Sentiment | VADER (vaderSentiment) |
 | Backend | Flask (Python 3.10) |
@@ -120,10 +120,10 @@ Open `http://localhost:5002`
 
 ## Getting API Keys (Both Free)
 
-**Groq** (primary — 14,400 req/day free)
+**Groq** (primary - 14,400 req/day free)
 → [console.groq.com](https://console.groq.com) → Sign up → API Keys → Create
 
-**Google Gemini** (fallback — 1,500 req/day free)
+**Google Gemini** (fallback - 1,500 req/day free)
 → [aistudio.google.com](https://aistudio.google.com) → Get API Key → Create
 
 ---
@@ -133,13 +133,13 @@ Open `http://localhost:5002`
 ```
 mental_health_chatbot/
 ├── backend/
-│   ├── app.py              # Flask backend — session management, API routes
+│   ├── app.py              # Flask backend - session management, API routes
 │   ├── chatbot.py          # Emotion detection, LLM calls, crisis handling
 │   └── requirements.txt
 ├── frontend/
-│   └── index.html          # Full UI — emotion wheel, analysis panel, chat
+│   └── index.html          # Full UI - emotion wheel, analysis panel, chat
 ├── screenshots/
-├── .env                    # API keys — not committed
+├── .env                    # API keys - not committed
 ├── README.md
 └── ROADMAP.md
 ```
@@ -168,8 +168,8 @@ When crisis keywords are detected or VADER compound < −0.85, Solace immediatel
 
 ```
 iCall (India): 9152987821
-Vandrevala Foundation: 1860-2662-345 — free, 24/7
-AASRA: 9820466627 — 24/7
+Vandrevala Foundation: 1860-2662-345 - free, 24/7
+AASRA: 9820466627 - 24/7
 International: befrienders.org
 ```
 
@@ -179,7 +179,7 @@ No LLM call is made. Response is instant, deterministic and always present.
 
 ## Limitations
 
-Mood detection relies on keyword matching — nuanced or indirect expressions ("I feel like a ghost") may not score correctly without the LLM's interpretation. VADER is trained on social media text and handles informal language well but can misclassify sarcasm. The system is not a replacement for professional mental health support and explicitly encourages users to seek professional help for persistent symptoms.
+Mood detection relies on keyword matching - nuanced or indirect expressions ("I feel like a ghost") may not score correctly without the LLM's interpretation. VADER is trained on social media text and handles informal language well but can misclassify sarcasm. The system is not a replacement for professional mental health support and explicitly encourages users to seek professional help for persistent symptoms.
 
 ---
 
@@ -189,4 +189,4 @@ See [ROADMAP.md](ROADMAP.md)
 
 ---
 
-*Built: November 2025 — Production UI: June 2026*
+*Built: November 2025 - Production UI: June 2026*
