@@ -31,7 +31,9 @@ except ImportError:
     VADER_AVAILABLE = False
 
 # Google Gemini client
+print("DEBUG: GEMINI_API_KEY =", os.environ.get("GEMINI_API_KEY"))
 gemini_client = genai.Client(api_key=os.environ.get("GEMINI_API_KEY")) if GOOGLE_AVAILABLE else None
+print("DEBUG: Gemini client initialized")
 MODEL_NAME    = "gemini-1.5-flash"
 
 # Groq client (free alternative — 14400 req/day)
