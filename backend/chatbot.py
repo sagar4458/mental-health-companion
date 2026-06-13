@@ -1,43 +1,79 @@
 """
 Solace — Mental Health Companion
-Version 1 (November 2025)
+Version 1.1 (June 2026) — FIXED
 
 Sentiment analysis: VADER (compound score -1 to +1)
 Mood detection: scored keyword matching
-LLM: Google Gemini 1.5 Flash (1500 req/day free tier)
+LLM: Groq (primary) + Google Gemini (fallback)
 """
 
 import os
-try:
-    from google import genai
-    from google.genai import types
-    GOOGLE_AVAILABLE = True
-except ImportError:
-    GOOGLE_AVAILABLE = False
+import time
+from datetime import datetime
+from typing import List, Dict, Any
+
+# ────────────────────────────────────────────────────────────
+# 1. INITIALIZE GROQ
+# ────────────────────────────────────────────────────────────
+GROQ_AVAILABLE = False
+groq_client = None
 
 try:
     from groq import Groq
-    GROQ_AVAILABLE = True
+    groq_api_key = os.environ.get("GROQ_API_KEY")
+    if groq_api_key:
+        groq_client = Groq(api_key=groq_api_key)
+        GROQ_AVAILABLE = True
+        print("✓ Groq client initialized successfully")
+    else:
+        print("⚠ GROQ_API_KEY not found in environment")
 except ImportError:
-    GROQ_AVAILABLE = False
-from datetime import datetime
-from typing import List, Dict, Any
+    print("⚠ Groq package not installed")
+except Exception as e:
+    print(f"✗ Failed to initialize Groq: {e}")
+
+# ────────────────────────────────────────────────────────────
+# 2. INITIALIZE GOOGLE GEMINI
+# ────────────────────────────────────────────────────────────
+GOOGLE_AVAILABLE = False
+gemini_client = None
+
+try:
+    from google import genai
+    from google.genai import types
+    gemini_api_key = os.environ.get("GEMINI_API_KEY")
+    if gemini_api_key:
+        gemini_client = genai.Client(api_key=gemini_api_key)
+        GOOGLE_AVAILABLE = True
+        print("✓ Gemini client initialized successfully")
+    else:
+        print("⚠ GEMINI_API_KEY not found in environment")
+except ImportError:
+    print("⚠ Google GenAI package not installed")
+except Exception as e:
+    print(f"✗ Failed to initialize Gemini: {e}")
+
+# ────────────────────────────────────────────────────────────
+# 3. INITIALIZE VADER SENTIMENT
+# ────────────────────────────────────────────────────────────
+VADER_AVAILABLE = False
+vader = None
 
 try:
     from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
     vader = SentimentIntensityAnalyzer()
     VADER_AVAILABLE = True
+    print("✓ VADER sentiment analyzer loaded")
 except ImportError:
-    VADER_AVAILABLE = False
+    print("⚠ vaderSentiment not installed")
 
-# Google Gemini client
-print("DEBUG: GEMINI_API_KEY =", os.environ.get("GEMINI_API_KEY"))
-gemini_client = genai.Client(api_key=os.environ.get("GEMINI_API_KEY")) if GOOGLE_AVAILABLE else None
-print("DEBUG: Gemini client initialized")
-MODEL_NAME    = "gemini-1.5-flash"
+# ────────────────────────────────────────────────────────────
+# 4. CHECK THAT AT LEAST ONE LLM IS AVAILABLE
+# ────────────────────────────────────────────────────────────
+if not GROQ_AVAILABLE and not GOOGLE_AVAILABLE:
+    print("✗ CRITICAL: Neither Groq nor Gemini API key configured!")
+    print("  Please set GROQ_API_KEY or GEMINI_API_KEY environment variables")
 
-# Groq client (free alternative — 14400 req/day)
-groq_client = Groq(api_key=os.environ.get("GROQ_API_KEY")) if GROQ_AVAILABLE and os.environ.get("GROQ_API_KEY") else None
 MAX_HISTORY = 20
 
 CRISIS_KEYWORDS = [
@@ -178,9 +214,25 @@ Emotional arc this session: {emotional_arc}
 - Write naturally — no bullet points, no headers in responses
 - Do not mention you are an AI unless directly asked"""
 
+EMOTION_KEYWORDS = {
+    "anxious"  : ["anxious","anxiety","worried","panic","nervous","stressed","overwhelmed","scared","dread","tense","restless"],
+    "sad"      : ["sad","depressed","hopeless","crying","grief","lonely","empty","numb","heartbroken","devastated","worthless","down"],
+    "angry"    : ["angry","frustrated","furious","mad","irritated","rage","livid","annoyed","resentful","bitter"],
+    "positive" : ["happy","good","great","excited","grateful","better","hopeful","proud","content","joyful","amazing","wonderful"],
+    "neutral"  : ["okay","fine","alright","normal","whatever","not sure","unsure","confused","meh"],
+}
+
+WEATHER_MAP = {
+    "crisis"  : "storm",
+    "sad"     : "rain",
+    "anxious" : "lightning",
+    "angry"   : "storm",
+    "positive": "sunny",
+    "neutral" : "calm_night",
+}
 
 def get_sentiment(text: str) -> Dict:
-    if VADER_AVAILABLE:
+    if VADER_AVAILABLE and vader:
         scores = vader.polarity_scores(text)
         compound = scores["compound"]
     else:
@@ -208,17 +260,15 @@ def get_sentiment(text: str) -> Dict:
         "intensity_score": round(intensity_score, 3),
     }
 
-
 def is_crisis(text: str) -> bool:
     t = text.lower()
     if any(kw in t for kw in CRISIS_KEYWORDS):
         return True
-    if VADER_AVAILABLE:
+    if VADER_AVAILABLE and vader:
         score = vader.polarity_scores(text)["compound"]
         if score < -0.85:
             return True
     return False
-
 
 def crisis_response() -> str:
     return (
@@ -232,24 +282,6 @@ def crisis_response() -> str:
         "I am here with you right now. Can you tell me — is there one person near you you could reach?"
     )
 
-
-EMOTION_KEYWORDS = {
-    "anxious"  : ["anxious","anxiety","worried","panic","nervous","stressed","overwhelmed","scared","dread","tense","restless"],
-    "sad"      : ["sad","depressed","hopeless","crying","grief","lonely","empty","numb","heartbroken","devastated","worthless","down"],
-    "angry"    : ["angry","frustrated","furious","mad","irritated","rage","livid","annoyed","resentful","bitter"],
-    "positive" : ["happy","good","great","excited","grateful","better","hopeful","proud","content","joyful","amazing","wonderful"],
-    "neutral"  : ["okay","fine","alright","normal","whatever","not sure","unsure","confused","meh"],
-}
-
-WEATHER_MAP = {
-    "crisis"  : "storm",
-    "sad"     : "rain",
-    "anxious" : "lightning",
-    "angry"   : "storm",
-    "positive": "sunny",
-    "neutral" : "calm_night",
-}
-
 def compute_emotion_scores(text: str, primary_mood: str) -> Dict[str, int]:
     t = text.lower()
     raw = {}
@@ -261,7 +293,6 @@ def compute_emotion_scores(text: str, primary_mood: str) -> Dict[str, int]:
         raw[primary_mood] = 1
     total = sum(raw.values())
     return {k: round(v / total * 100) for k, v in sorted(raw.items(), key=lambda x: -x[1])}
-
 
 def detect_mood(text: str, sentiment: Dict) -> str:
     t = text.lower()
@@ -280,7 +311,6 @@ def detect_mood(text: str, sentiment: Dict) -> str:
     elif compound >= 0.3:
         return "positive"
     return "neutral"
-
 
 class Conversation:
     def __init__(self):
@@ -354,7 +384,6 @@ class Conversation:
             "current_sentiment": self.current_sentiment,
         }
 
-
 def generate_response(conversation: Conversation, user_message: str) -> Dict[str, Any]:
     if is_crisis(user_message):
         response_text = crisis_response()
@@ -375,12 +404,11 @@ def generate_response(conversation: Conversation, user_message: str) -> Dict[str
 
     prompt = conversation.build_prompt(user_message, mood, sentiment)
 
-    import time
     response_text = None
     last_error    = ""
 
-    # ── 1. Try Groq first — 14,400 req/day free, completely separate from Google ──
-    if groq_client:
+    # ── STRATEGY 1: Try Groq first (14,400 req/day free) ──
+    if groq_client and GROQ_AVAILABLE:
         try:
             groq_resp = groq_client.chat.completions.create(
                 model       = "llama-3.1-8b-instant",
@@ -389,28 +417,38 @@ def generate_response(conversation: Conversation, user_message: str) -> Dict[str
                 max_tokens  = 450,
             )
             response_text = groq_resp.choices[0].message.content.strip()
+            print("✓ Got response from Groq")
         except Exception as ge:
-            last_error = str(ge)
+            last_error = f"Groq error: {str(ge)}"
+            print(f"⚠ Groq failed: {last_error}")
 
-    # ── 2. Fallback: try all Google Gemini models ──────────────────────────────
-    if not response_text and gemini_client:
-        for model in ["gemini-2.0-flash-lite","gemini-2.0-flash","gemini-1.5-flash-8b","gemini-1.5-flash","gemini-1.0-pro"]:
+    # ── STRATEGY 2: Fallback to Gemini (1500 req/day free) ──
+    if not response_text and gemini_client and GOOGLE_AVAILABLE:
+        for model in ["gemini-2.0-flash-lite", "gemini-2.0-flash", "gemini-1.5-flash-8b", "gemini-1.5-flash", "gemini-1.0-pro"]:
             try:
                 resp = gemini_client.models.generate_content(
                     model   = model,
                     contents= prompt,
                     config  = types.GenerateContentConfig(
-                        temperature=0.78, max_output_tokens=450, top_p=0.92),
+                        temperature=0.78,
+                        max_output_tokens=450,
+                        top_p=0.92
+                    ),
                 )
                 response_text = resp.text.strip()
+                print(f"✓ Got response from Gemini ({model})")
                 break
             except Exception as me:
-                last_error = str(me)
+                last_error = f"Gemini ({model}) error: {str(me)}"
+                print(f"⚠ {last_error}")
                 if "429" in last_error or "quota" in last_error.lower():
-                    time.sleep(1); continue
+                    time.sleep(1)
+                    continue
                 break
 
+    # ── FALLBACK: If both fail, return holding message ──
     if not response_text:
+        print(f"✗ Both LLMs failed. Last error: {last_error}")
         response_text = "I need a brief moment. Please try again in 30 seconds — I'm still here with you."
 
     conversation.add_message("assistant", response_text)
