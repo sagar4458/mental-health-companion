@@ -9,6 +9,8 @@
 
 > Type how you feel. Solace listens, understands, and responds - with real-time emotion detection, adaptive background themes, and a live emotional analysis panel that tracks your session journey.
 
+**🌐 Live Demo:** [https://mental-health-companion-evw1.onrender.com/](https://mental-health-companion-evw1.onrender.com/)
+
 Built as part of an AI/ML portfolio - a production-level mental health companion combining LLM-based conversation, VADER sentiment analysis, multi-emotion scoring and a fully designed therapeutic UI.
 
 ---
